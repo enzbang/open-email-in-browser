@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from email.header import decode_header, make_header
+from slugify import slugify
 import chardet
 import cherrypy
 import email
@@ -92,6 +93,8 @@ class EmailContent(object):
             if part.get_content_maintype() == 'multiplart':
                 continue
             part_filename = part.get_filename()
+            if part_filename:
+                part_filename = slugify(part_filename)
             content_type = part.get_content_type()
             content = part.get_payload(decode=True)
             content_charset = part.get_content_charset()
