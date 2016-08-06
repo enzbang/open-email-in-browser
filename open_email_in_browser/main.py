@@ -8,6 +8,8 @@ import email
 import mimetypes
 import os
 import re
+import subprocess
+import socket
 import sys
 
 
@@ -240,12 +242,24 @@ def main():
     mimetypes.add_type('text/x-ada', '.adb')
     cherrypy.log.screen = False
     cherrypy.server.socket_port = 8080
+    cherrypy.server.socket_host = socket.gethostbyaddr(socket.gethostname())[0]
     cherrypy.tree.mount(
         HTTPEmailViewer(sys.argv[1]), "/", {'/': {}})
     cherrypy.engine.start()
     try:
         open_cmd = 'xdg-open' if sys.platform.startswith('linux') else 'open'
-        os.system(open_cmd + ' http://localhost:8080')
+        try:
+            subprocess.check_call(
+                [open_cmd,
+                 'http://%s:%d' % (
+                    cherrypy.server.socket_host,
+                    cherrypy.server.socket_port)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError:
+            print('open http://%s:%d to see the email in your browser' % (
+                cherrypy.server.socket_host,
+                cherrypy.server.socket_port))
         sys.stdin.read(1)
         print('stopping the server, please wait...')
     finally:
