@@ -89,6 +89,7 @@ class EmailContent(object):
             with open(filename) as f:
                 self.msg = email.message_from_file(f)
         self.parts = {}
+        self.inline_parts = {}
 
         for part in self.msg.walk():
             if part.get_content_maintype() == 'multiplart':
@@ -117,6 +118,15 @@ class EmailContent(object):
                 self.parts['html'] = (content, content_type)
             elif part_filename:
                 self.parts[part_filename] = (content, content_type)
+
+                # Check whether this is a inline part, e.g. as images sent
+                # with Apple Mail
+                if part.get('Content-Disposition').startswith('inline'):
+                    content_id = part.get('Content-Id')
+                    if content_id.startswith('<') and content_id.endswith('>'):
+                        content_id = content_id[1:-1]
+                    # Add a link to the part with have extracted
+                    self.inline_parts[content_id] = part_filename
 
     @property
     def subject(self):
@@ -167,7 +177,12 @@ class HTTPEmailViewer(object):
     @cherrypy.expose
     def cid(self, name):
         assert self.last_email is not None
-        filename = name.rsplit('@', 1)[0]
+
+        if name in self.last_email.inline_parts:
+            # If inline part then get the "real" attachment
+            filename = self.last_email.inline_parts[name]
+        else:
+            filename = name.rsplit('@', 1)[0]
         return self.last_email.get_attachment(filename)
 
     @cherrypy.expose
