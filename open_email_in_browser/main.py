@@ -151,21 +151,22 @@ class EmailContent(object):
 
         other_parts = [name for name in self.parts if name not in ('txt', 'html')]
 
-        if other_parts:
-            toc = '<ul class="nav nav-tabs">'
-            for name in other_parts:
-                toc += '<li><a href="?name={name}">' \
-                    '{name}</a></li>'.format(name=name)
-            toc += '<li><a class="dropdown-toggle" data-toggle="dropdown"' \
-                    ' href="#" role="button" aria-haspopup="true"' \
-                    ' aria-expanded="false">' \
-                    '<span class="glyphicon glyphicon-download"></span>' \
-                    '<span class="caret"></span></a>' \
-                    '<ul class="dropdown-menu">'
-            for name in other_parts:
-                toc += '<li><a href="/download?name={name}">{name}</li>'.format(
-                        name=name)
-            toc += '</ul></li></ul>'
+        if not other_parts:
+            return ''
+        toc = '<ul class="nav nav-tabs">'
+        for name in other_parts:
+            toc += '<li><a href="?name={name}">' \
+                '{name}</a></li>'.format(name=name)
+        toc += '<li><a class="dropdown-toggle" data-toggle="dropdown"' \
+                ' href="#" role="button" aria-haspopup="true"' \
+                ' aria-expanded="false">' \
+                '<span class="glyphicon glyphicon-download"></span>' \
+                '<span class="caret"></span></a>' \
+                '<ul class="dropdown-menu">'
+        for name in other_parts:
+            toc += '<li><a href="/download?name={name}">{name}</li>'.format(
+                    name=name)
+        toc += '</ul></li></ul>'
         return toc
 
 
