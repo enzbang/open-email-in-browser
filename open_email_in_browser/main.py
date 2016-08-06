@@ -96,7 +96,8 @@ class EmailContent(object):
                 continue
             part_filename = part.get_filename()
             if part_filename:
-                part_filename = slugify(part_filename)
+                part_filename_prefix, ext = os.path.splitext(part_filename)
+                part_filename = slugify(part_filename_prefix) + ext
             content_type = part.get_content_type()
             content = part.get_payload(decode=True)
             content_charset = part.get_content_charset()
