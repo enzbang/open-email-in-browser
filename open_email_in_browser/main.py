@@ -213,7 +213,9 @@ class HTTPEmailViewer(object):
         if content_type == 'text/plain':
             cherrypy.response.headers['Content-Type'] = 'text/html'
             return b'<pre>' + content + b'</pre>'
-        elif not content_type or not content_type.startswith('text/'):
+        elif not content_type or (
+                not content_type.startswith('text/') and
+                not content_type.startswith('image/')):
             cherrypy.response.headers['Content-Type'] = 'text/html'
             return '<div class="lead">Cannot display inline</aiv>'
         return content
