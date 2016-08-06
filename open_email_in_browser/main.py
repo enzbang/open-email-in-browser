@@ -55,12 +55,8 @@ TEMPLATE = """
   <title>{subject}</title>
 <!-- Latest compiled and minified CSS -->
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-<!-- Optional theme -->
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
-
-
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/yeti/bootstrap.min.css">
   <style>{css}</style>
-
 </head>
 
 <body>
@@ -69,12 +65,17 @@ TEMPLATE = """
     <h1>{subject} <small>{from_addr}</small></h1>
     </div>
   {toc}
-  <p><a href='/download?name={partname}'>Download attachment</a></p>
   <div id="root">
       <iframe sandbox seamless src='/view?name={partname}'></iframe>
   </div>
 
   </div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  <!-- Latest compiled and minified JavaScript -->
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
 </body>
 </html>
 """
@@ -147,12 +148,24 @@ class EmailContent(object):
         return cid_links(content), content_type
 
     def get_toc(self):
-        toc = '<ul class="nav nav-tabs">'
-        for name in self.parts.keys():
-            if name not in ('txt', 'html'):
+
+        other_parts = [name for name in self.parts if name not in ('txt', 'html')]
+
+        if other_parts:
+            toc = '<ul class="nav nav-tabs">'
+            for name in other_parts:
                 toc += '<li><a href="?name={name}">' \
                     '{name}</a></li>'.format(name=name)
-        toc += '</ul>'
+            toc += '<li><a class="dropdown-toggle" data-toggle="dropdown"' \
+                    ' href="#" role="button" aria-haspopup="true"' \
+                    ' aria-expanded="false">' \
+                    '<span class="glyphicon glyphicon-download"></span>' \
+                    '<span class="caret"></span></a>' \
+                    '<ul class="dropdown-menu">'
+            for name in other_parts:
+                toc += '<li><a href="/download?name={name}">{name}</li>'.format(
+                        name=name)
+            toc += '</ul></li></ul>'
         return toc
 
 
