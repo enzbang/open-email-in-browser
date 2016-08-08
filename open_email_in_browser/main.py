@@ -5,6 +5,7 @@ Read an email file and start a webserver to display the HTML content
 and the attachments. This is mostly meant to be an helper for mutt.
 """
 
+from jinja2 import Template
 from email.header import decode_header, make_header
 from slugify import slugify
 import chardet
@@ -114,29 +115,12 @@ class EmailContent(object):
             content, content_type = self.get_attachment('txt')
         return cid_links(content), content_type
 
-    def get_attachments_bar(self):
-        """Get the attachment nav bar."""
+    def get_attachments_list(self):
+        """Get the attachments list."""
         other_parts = [
                 name for name in self.parts
                 if name not in ('txt', 'html')]
-
-        if not other_parts:
-            return ''
-        toc = '<ul class="nav nav-tabs">'
-        for name in other_parts:
-            toc += '<li><a href="?name={name}">' \
-                '{name}</a></li>'.format(name=name)
-        toc += '<li><a class="dropdown-toggle" data-toggle="dropdown"' \
-            ' href="#" role="button" aria-haspopup="true"' \
-            ' aria-expanded="false">' \
-            '<span class="glyphicon glyphicon-download"></span>' \
-            '<span class="caret"></span></a>' \
-            '<ul class="dropdown-menu">'
-        for name in other_parts:
-            toc += '<li><a href="/download?name={name}">{name}</li>'.format(
-                    name=name)
-        toc += '</ul></li></ul>'
-        return toc
+        return other_parts
 
 
 def cid_links(content):
@@ -156,6 +140,16 @@ class HTTPEmailViewer(object):
         self.email = email
         self.last_email = EmailContent(self.email)
 
+    def get_attachment(self, name):
+        if name in self.last_email.inline_parts:
+            # If inline part then get the "real" attachment
+            filename = self.last_email.inline_parts[name]
+        elif name in self.last_email.parts:
+            filename = name
+        else:
+            filename = name.rsplit('@', 1)[0]
+        return self.last_email.get_attachment(filename)
+
     @cherrypy.expose
     def index(self, name='main'):
         """Return the main page.
@@ -163,12 +157,14 @@ class HTTPEmailViewer(object):
         :param name: name of the attachment to display
         :type name: str
         """
-        return get_resource(kind='html').format(
+        _, part_content_type = self.get_attachment(name)
+        return Template(get_resource(kind='html')).render(
             subject=self.last_email.subject,
             from_addr=self.last_email.from_addr,
             partname=name,
+            part_content_type=part_content_type,
             css=get_resource(kind='css'),
-            toc=self.last_email.get_attachments_bar())
+            attachments=self.last_email.get_attachments_list())
 
     @cherrypy.expose
     def cid(self, name):

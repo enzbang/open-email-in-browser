@@ -19,7 +19,7 @@ setup(
     packages=find_packages(),
     package_data={
         'open_email_in_browser': ['data/*.html', 'data/*.css']},
-    install_requires=['cherrypy', 'chardet', 'python-slugify'],
+    install_requires=['cherrypy', 'Jinja2', 'chardet', 'python-slugify'],
     entry_points={
         'console_scripts': [
             'open-email-in-browser=open_email_in_browser.main:main',

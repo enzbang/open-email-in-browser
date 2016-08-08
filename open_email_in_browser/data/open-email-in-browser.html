@@ -5,22 +5,46 @@
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-                <title>{subject}</title>
+                <title>{{subject}}</title>
                 <!-- Latest compiled and minified CSS -->
                 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
                 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/yeti/bootstrap.min.css">
-                <style>{css}</style>
+                <style>{{css}}</style>
         </head>
 
         <body>
                 <div class="container">
                         <div class="page-header">
-                                <h1>{subject} <small>{from_addr}</small></h1>
+                                <h1>{{subject}} <small>{{from_addr}}</small></h1>
                         </div>
-                        {toc}
+                        {% if attachments %}
+                        <ul class="nav nav-tabs">
+                                {% for name in attachments %}
+                                <li>
+                                        <a href="?name={{name}}">{{name}}</a>
+                                </li>
+                                {% endfor%}
+                                <li><a class="dropdown-toggle"
+                                       data-toggle="dropdown" href="#"
+                                       role="button" aria-haspopup="true"
+                                       aria-expanded="false">
+                                       <span class="glyphicon glyphicon-download"></span>
+                                       <span class="caret"></span></a>
+                                        <ul class="dropdown-menu">
+                                                {% for name in attachments %}
+                                                <li><a href="/download?name={{name}}">{{name}}</a></li>
+                                                {% endfor %}
+                                        </ul>
+                                </li>
+                        </ul>
+                        {% endif %}
+                        {% if 'image/' in part_content_type %}
+                        <p><img style="width: 100%;" src="/view?name={{partname}}" /></p>
+                        {% else %}
                         <div id="root">
-                                <iframe sandbox="allow-same-origin" src='/view?name={partname}'></iframe>
+                                <iframe sandbox="allow-same-origin" src='/view?name={{partname}}'></iframe>
                         </div>
+                        {% endif %}
                 </div>
 
 
