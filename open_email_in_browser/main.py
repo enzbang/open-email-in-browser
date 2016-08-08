@@ -82,7 +82,7 @@ class EmailContent(object):
                 # Check whether this is a inline part, e.g. as images sent
                 # with Apple Mail
                 if part.get('Content-Disposition').startswith('inline'):
-                    content_id = part.get('Content-Id')
+                    content_id = part.get('Content-Id', '')
                     if content_id.startswith('<') and content_id.endswith('>'):
                         content_id = content_id[1:-1]
                     # Add a link to the part with have extracted
