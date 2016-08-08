@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""open-email-in-browser.
+
+Read an email file and start a webserver to display the HTML content
+and the attachments. This is mostly meant to be an helper for mutt.
+"""
 
 from email.header import decode_header, make_header
 from slugify import slugify
@@ -13,79 +18,29 @@ import socket
 import sys
 
 
-CSS = """
-@charset "utf-8";
-html {
-  /* Change default typefaces here */
-  font-family: serif;
-  font-size: 137.5%;
-  -webkit-font-smoothing: antialiased;
-}
+def get_resource(kind):
+    """Get HTML or CSS resource.
 
-body {
-    margin: 0px;
-    padding: 0px;
-}
-
-/* iframe's parent node */
-div#root {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-}
-
-/* iframe itself */
-div#root > iframe {
-    display: block;
-    width: 100%;
-    height: 100%;
-    border: none;
-    padding-bottom: 10em;
-}
-"""
-
-
-TEMPLATE = """
-<!doctype html>
-
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-
-  <title>{subject}</title>
-<!-- Latest compiled and minified CSS -->
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/yeti/bootstrap.min.css">
-  <style>{css}</style>
-</head>
-
-<body>
-  <div class="container">
-    <div class="page-header">
-    <h1>{subject} <small>{from_addr}</small></h1>
-    </div>
-  {toc}
-  <div id="root">
-      <iframe sandbox seamless src='/view?name={partname}'></iframe>
-  </div>
-
-  </div>
-
-
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-  <!-- Latest compiled and minified JavaScript -->
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
-
-</body>
-</html>
-"""
+    :param kind: 'html' or 'css'
+    :type kind: str
+    """
+    from pkg_resources import resource_string
+    resource = resource_string(
+            __name__, os.path.join(
+                'data/open-email-in-browser.' + kind)).decode('utf-8')
+    return resource
 
 
 class EmailContent(object):
+    """Open an email and parse it."""
 
     def __init__(self, filename):
+        """Read an email.
+
+        :param filename: path to the email or '-' to read the message from
+            stdin
+        :type filename: str
+        """
         if filename == '-':
             self.msg = email.message_from_string(sys.stdin.read())
         else:
@@ -134,24 +89,36 @@ class EmailContent(object):
 
     @property
     def subject(self):
+        """Return the email subject, properly decoded."""
         return str(make_header(decode_header(self.msg['Subject'])))
 
     @property
     def from_addr(self):
+        """Return the email from addr, properly decoded."""
         return str(make_header(decode_header(self.msg['From'])))
 
     def get_attachment(self, name):
+        """Get attachment content and content type.
+
+        :param name: name of the attachemnt
+        :type name: str
+        :rtype: tuple[str][str]
+        :return: the content and content_type
+        """
         return self.parts.get(name, ('', ''))
 
     def get_main_content(self):
+        """Get main content (HTML by default else plain text)."""
         content, content_type = self.get_attachment('html')
         if not content:
             content, content_type = self.get_attachment('txt')
         return cid_links(content), content_type
 
-    def get_toc(self):
-
-        other_parts = [name for name in self.parts if name not in ('txt', 'html')]
+    def get_attachments_bar(self):
+        """Get the attachment nav bar."""
+        other_parts = [
+                name for name in self.parts
+                if name not in ('txt', 'html')]
 
         if not other_parts:
             return ''
@@ -160,11 +127,11 @@ class EmailContent(object):
             toc += '<li><a href="?name={name}">' \
                 '{name}</a></li>'.format(name=name)
         toc += '<li><a class="dropdown-toggle" data-toggle="dropdown"' \
-                ' href="#" role="button" aria-haspopup="true"' \
-                ' aria-expanded="false">' \
-                '<span class="glyphicon glyphicon-download"></span>' \
-                '<span class="caret"></span></a>' \
-                '<ul class="dropdown-menu">'
+            ' href="#" role="button" aria-haspopup="true"' \
+            ' aria-expanded="false">' \
+            '<span class="glyphicon glyphicon-download"></span>' \
+            '<span class="caret"></span></a>' \
+            '<ul class="dropdown-menu">'
         for name in other_parts:
             toc += '<li><a href="/download?name={name}">{name}</li>'.format(
                     name=name)
@@ -173,26 +140,39 @@ class EmailContent(object):
 
 
 def cid_links(content):
+    """Fix cid: links to open the extracted attachments."""
     return re.sub(b'src="cid:', b'src="/cid?name=', content)
 
 
 class HTTPEmailViewer(object):
+    """Our cherrypy app."""
 
     def __init__(self, email):
+        """Initialize the viewer.
+
+        :param email: the email to read (or '-' to read from stdin)
+        :type email: str
+        """
         self.email = email
         self.last_email = EmailContent(self.email)
 
     @cherrypy.expose
     def index(self, name='main'):
-        return TEMPLATE.format(
+        """Return the main page.
+
+        :param name: name of the attachment to display
+        :type name: str
+        """
+        return get_resource(kind='html').format(
             subject=self.last_email.subject,
             from_addr=self.last_email.from_addr,
             partname=name,
-            css=CSS,
-            toc=self.last_email.get_toc())
+            css=get_resource(kind='css'),
+            toc=self.last_email.get_attachments_bar())
 
     @cherrypy.expose
     def cid(self, name):
+        """Return a cid: attachment content."""
         assert self.last_email is not None
 
         if name in self.last_email.inline_parts:
@@ -204,6 +184,7 @@ class HTTPEmailViewer(object):
 
     @cherrypy.expose
     def view(self, name):
+        """Return an attachment content to view inline."""
         assert self.last_email is not None
         filename = name.rsplit('@', 1)[0]
         if name == 'main':
@@ -225,6 +206,7 @@ class HTTPEmailViewer(object):
 
     @cherrypy.expose
     def download(self, name):
+        """Download an attachment."""
         cherrypy.response.headers['Content-Disposition'] = \
             'attachment; filename="%s"' % name
         assert self.last_email is not None
@@ -238,6 +220,7 @@ class HTTPEmailViewer(object):
 
 
 def main():
+    """Start the cherrypy server."""
     mimetypes.add_type('text/x-ada', '.ads')
     mimetypes.add_type('text/x-ada', '.adb')
     cherrypy.log.screen = False

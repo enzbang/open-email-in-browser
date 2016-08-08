@@ -17,6 +17,8 @@ setup(
     ],
     keywords='mutt email MUA',
     packages=find_packages(),
+    package_data={
+        'open_email_in_browser': ['data/*.html', 'data/*.css']},
     install_requires=['cherrypy', 'chardet', 'python-slugify'],
     entry_points={
         'console_scripts': [
